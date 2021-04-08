@@ -231,7 +231,7 @@ type addrBatch struct {
 
 func (p *kping) Run() (statistics map[string]*Statistic, err error) {
 	// used by send & recv, so buffer size is double
-	p.ipEventChan = make(chan *ipEvent, p.ipCount*p.count*2)
+	p.ipEventChan = make(chan *ipEvent, p.ipCount*p.count)
 
 	// set context
 	ctx, cancel := context.WithTimeout(context.TODO(), p.timeout)
@@ -258,37 +258,37 @@ func (p *kping) Run() (statistics map[string]*Statistic, err error) {
 	}
 
 	// receive packets
-	go func() {
-		defer close(p.ipEventChan)
+	//go func() {
+	//	defer close(p.ipEventChan)
 
-		var recvParallel int64
-		var recvFunc func(index int, wg *sync.WaitGroup)
-		switch p.recvMode {
-		case "afpacket":
-			recvParallel = p.afpacketRecvOpts.Parallel
-			recvFunc = p.afpacketRecv
-		case "batch":
-			recvParallel = p.batchRecvOpts.Parallel
-			recvFunc = p.batchRecv
-		default:
-			panic(fmt.Sprintf("ping recv: unknown recvMode: %s", p.recvMode))
-		}
+	//	var recvParallel int64
+	//	var recvFunc func(index int, wg *sync.WaitGroup)
+	//	switch p.recvMode {
+	//	case "afpacket":
+	//		recvParallel = p.afpacketRecvOpts.Parallel
+	//		recvFunc = p.afpacketRecv
+	//	case "batch":
+	//		recvParallel = p.batchRecvOpts.Parallel
+	//		recvFunc = p.batchRecv
+	//	default:
+	//		panic(fmt.Sprintf("ping recv: unknown recvMode: %s", p.recvMode))
+	//	}
 
-		fmt.Fprintf(os.Stderr, "kping recv: started, parallel %d, ipCount: %d\n", recvParallel, p.ipCount)
-		wg := new(sync.WaitGroup)
-		stime := time.Now()
-		for i := 0; i < int(recvParallel); i++ {
-			wg.Add(1)
-			index := i
-			go recvFunc(index, wg)
-		}
+	//	fmt.Fprintf(os.Stderr, "kping recv: started, parallel %d, ipCount: %d\n", recvParallel, p.ipCount)
+	//	wg := new(sync.WaitGroup)
+	//	stime := time.Now()
+	//	for i := 0; i < int(recvParallel); i++ {
+	//		wg.Add(1)
+	//		index := i
+	//		go recvFunc(index, wg)
+	//	}
+	//
+	//	// receive ready
+	//	close(p.recvReady)
 
-		// receive ready
-		close(p.recvReady)
-
-		wg.Wait()
-		fmt.Fprintf(os.Stderr, "kping recv: all done, ipCount: %d, usedTime: %s\n", p.ipCount, time.Since(stime))
-	}()
+	//	wg.Wait()
+	//	fmt.Fprintf(os.Stderr, "kping recv: all done, ipCount: %d, usedTime: %s\n", p.ipCount, time.Since(stime))
+	//}()
 
 	// send packets
 	go func() {
@@ -330,13 +330,16 @@ func (p *kping) Run() (statistics map[string]*Statistic, err error) {
 		}
 
 		// send extra 10 packets
-		for n := 0; n < int(p.count+10); n++ {
+		//for n := 0; n < int(p.count+10); n++ {
+		n := 0
+		for {
+			n++
 			stime := time.Now()
 			for _, batch := range addrBatchs {
 				batch.seq = n
 				addrBatchChan <- batch
 			}
-			time.Sleep(p.interval)
+//			time.Sleep(p.interval)
 			fmt.Fprintf(os.Stderr, "kping send: seq %d(%d) done, usedTime: %s\n", n, p.count+10, time.Since(stime))
 		}
 
@@ -347,6 +350,6 @@ func (p *kping) Run() (statistics map[string]*Statistic, err error) {
 	}()
 
 	p.process()
-	statistics = p.statistic()
-	return statistics, nil
+	//statistics = p.statistic()
+	return nil, nil
 }
